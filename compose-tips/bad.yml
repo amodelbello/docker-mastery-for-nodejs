@@ -1,7 +1,6 @@
-version: '2.4'
+version: "2.4"
 
 services:
-
   my-ghost:
     image: ghost:alpine
     # BAD: just make your service name the desired DNS name. docker-compose
@@ -24,7 +23,7 @@ services:
     networks:
       - ghostnetwork
     # BAD: if bind-mounting folders or files to host, always use relative file
-    # paths (starting with .). This makes your compose file reusable for others, 
+    # paths (starting with .). This makes your compose file reusable for others,
     # and won't break if you move your project around.
     volumes:
       - /my/path/on/host/:/var/lib/ghost
@@ -37,10 +36,10 @@ services:
 
   db:
     image: mysql:5.7
-    # BAD: this is rarely needed. You can use docker-compose commands that 
-    # reconize service names, like `docker-compose logs db` or 
-    # `docker-compose exec db bash` so you rarely need to control container 
-    # directly from docker CLI (which is why people usually manually set 
+    # BAD: this is rarely needed. You can use docker-compose commands that
+    # reconize service names, like `docker-compose logs db` or
+    # `docker-compose exec db bash` so you rarely need to control container
+    # directly from docker CLI (which is why people usually manually set
     # container_name
     container_name: db
     # BAD: see my-ghost:links above

@@ -1,4 +1,4 @@
-version: '2.4'
+version: "2.4"
 
 services:
   nginx-proxy:
@@ -17,4 +17,3 @@ services:
     image: ghost
     environment:
       - VIRTUAL_HOST=ghost.localhost
-

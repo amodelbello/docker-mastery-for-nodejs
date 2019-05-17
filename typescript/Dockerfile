@@ -6,7 +6,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --only=production \
-    && npm cache clean --force
+  && npm cache clean --force
 ENV PATH /app/node_modules/.bin:$PATH
 
 # a dev and build-only stage. we don't need to 

@@ -12,8 +12,8 @@ COPY package*.json ./
 
 # we use npm ci here so only the package-lock.json file is used
 RUN npm config list \
-    && npm ci \
-    && npm cache clean --force
+  && npm ci \
+  && npm cache clean --force
 
 
 ## Stage 2 (development)

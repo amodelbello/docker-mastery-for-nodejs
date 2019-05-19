@@ -1,20 +1,20 @@
 /* jshint node: true */
 /* jshint esversion: 6 */
-var express = require('express'),
-    async = require('async'),
-    pg = require('pg'),
-    { Pool } = require('pg'),
-    path = require('path'),
-    cookieParser = require('cookie-parser'),
-    bodyParser = require('body-parser'),
-    methodOverride = require('method-override'),
-    app = express(),
-    stoppable = require('stoppable'),
-    server = stoppable(require('http').Server(app)),
-    io = require('socket.io')(server),
-    redis = require('socket.io-redis');
+var express = require("express"),
+  async = require("async"),
+  pg = require("pg"),
+  { Pool } = require("pg"),
+  path = require("path"),
+  cookieParser = require("cookie-parser"),
+  bodyParser = require("body-parser"),
+  methodOverride = require("method-override"),
+  app = express(),
+  stoppable = require("stoppable"),
+  server = stoppable(require("http").Server(app)),
+  io = require("socket.io")(server),
+  redis = require("socket.io-redis");
 
-io.set('transports', ['polling']);
+io.set("transports", ["polling"]);
 
 var port = process.env.PORT || 80;
 
@@ -22,63 +22,69 @@ var port = process.env.PORT || 80;
 var dbConnected = false;
 
 // socket.io needs state storage if running more then one container
-io.adapter(redis({ host: 'redis', port: 6379 }));
+io.adapter(redis({ host: "redis", port: 6379 }));
 
 var pool = new pg.Pool({
-  connectionString: 'postgres://postgres@db/postgres'
+  connectionString: "postgres://postgres@db/postgres"
 });
 
-io.sockets.on('connection', function (socket) {
-  console.info('a user connected');
-  socket.emit('message', { text : 'Welcome!' });
+io.sockets.on("connection", function(socket) {
+  console.info("a user connected");
+  socket.emit("message", { text: "Welcome!" });
 
-  socket.on('subscribe', function (data) {
-    console.info('a user subscribed');
+  socket.on("subscribe", function(data) {
+    console.info("a user subscribed");
     socket.join(data.channel);
   });
 
-  socket.on('disconnect', function () {
-    console.info('a user DISconnected');
+  socket.on("disconnect", function() {
+    console.info("a user DISconnected");
   });
 });
 
 async.retry(
-  {times: 1000, interval: 1000},
+  { times: 1000, interval: 1000 },
   function(callback) {
     pool.connect(function(err, client, done) {
       if (err) {
-        console.error('Waiting for db');
+        console.error("Waiting for db");
       }
       callback(err, client);
     });
   },
   function(err, client) {
     if (err) {
-      return console.error('Giving up');
+      return console.error("Giving up");
     }
-    console.log('Connected to db');
+    console.log("Connected to db");
     dbConnected = true;
     getVotes(client);
   }
 );
 
 function getVotes(client) {
-  client.query('SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote', [], function(err, result) {
-    if (err) {
-      console.error('Error performing query: ' + err);
-    } else {
-      var votes = collectVotesFromResult(result);
-      io.sockets.emit('scores', JSON.stringify(votes));
-    }
+  client.query(
+    "SELECT vote, COUNT(id) AS count FROM votes GROUP BY vote",
+    [],
+    function(err, result) {
+      if (err) {
+        console.error("Error performing query: " + err);
+      } else {
+        var votes = collectVotesFromResult(result);
+        io.sockets.emit("scores", JSON.stringify(votes));
+      }
 
-    setTimeout(function() {getVotes(client); }, 1000);
-  });
+      setTimeout(function() {
+        getVotes(client);
+      }, 1000);
+    }
+  );
 }
 
 function collectVotesFromResult(result) {
-  var votes = {a: 0, b: 0};
+  var votes = { a: 0, b: 0 };
 
-  result.rows.forEach(function (row) {
+  result.rows.forEach(function(row) {
     votes[row.vote] = parseInt(row.count);
   });
 
@@ -87,21 +93,24 @@ function collectVotesFromResult(result) {
 
 app.use(cookieParser());
 app.use(bodyParser());
-app.use(methodOverride('X-HTTP-Method-Override'));
+app.use(methodOverride("X-HTTP-Method-Override"));
 app.use(function(req, res, next) {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  res.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
   next();
 });
 
-app.use(express.static(__dirname + '/views'));
+app.use(express.static(__dirname + "/views"));
 
-app.get('/', function (req, res) {
-  res.sendFile(path.resolve(__dirname + '/views/index.html'));
+app.get("/", function(req, res) {
+  res.sendFile(path.resolve(__dirname + "/views/index.html"));
 });
 
-app.get('/healthcheck', function (req, res) {
+app.get("/healthcheck", function(req, res) {
   // Docker and Swarm-style Healthcheck
   // "is this ready for connections or should it be replaced?"
   // Once `start_period` has passed, if healthcheck
@@ -114,13 +123,13 @@ app.get('/healthcheck', function (req, res) {
   // - If `docker-compose` fail this, nothing happens by design
   // - If Docker Swarm services fail this, they replace the container
   if (dbConnected) {
-      res.status(200).send('I am happy and healthy\n');
-    } else {
-      res.status(500).send('something is wrong, I am unhealthy\n');
-    }
+    res.status(200).send("I am happy and healthy\n");
+  } else {
+    res.status(500).send("something is wrong, I am unhealthy\n");
+  }
 });
 
-app.get('/readiness', function (req, res) {
+app.get("/readiness", function(req, res) {
   // "is this container ready for incoming connections?"
   // Kubernetes uses this to determine if container is ready for
   // incoming connections
@@ -129,46 +138,52 @@ app.get('/readiness', function (req, res) {
   // - If Kubelet fails this test, it removes pod from LB
   if (dbConnected) {
     // do sample db query here
-    res.status(200).send('I am happy and healthy\n');
+    res.status(200).send("I am happy and healthy\n");
   } else {
-    res.status(500).send('something is wrong, I am unhealthy\n');
+    res.status(500).send("something is wrong, I am unhealthy\n");
   }
 });
 
-app.get('/liveness', function (req, res) {
+app.get("/liveness", function(req, res) {
   // "does this container work or does it need to be replaced?"
   // check your app internals for health, but maybe
   // don't check for db connection, that's what readiness is for
   // this validates express is responding to requests
   // and not deadlocked
   // - If Kubelet fails this test, it kills and recreates pod
-  res.status(200).send('I am happy and healthy\n');
+  res.status(200).send("I am happy and healthy\n");
 });
 
 // quit on ctrl-c when running docker in terminal
-process.on('SIGINT', function onSigint () {
-	console.info('Got SIGINT (aka ctrl-c in docker). Graceful shutdown ', new Date().toISOString());
+process.on("SIGINT", function onSigint() {
+  console.info(
+    "Got SIGINT (aka ctrl-c in docker). Graceful shutdown ",
+    new Date().toISOString()
+  );
   shutdown();
 });
 
 // quit properly on docker stop
-process.on('SIGTERM', function onSigterm () {
-  console.info('Got SIGTERM (docker container stop). Graceful shutdown ', new Date().toISOString());
+process.on("SIGTERM", function onSigterm() {
+  console.info(
+    "Got SIGTERM (docker container stop). Graceful shutdown ",
+    new Date().toISOString()
+  );
   shutdown();
-})
+});
 
 // shut down server
 function shutdown() {
-  console.info('starting stoppable');
+  console.info("starting stoppable");
   server.stop(); // this might take a while depending on connections
-  console.info('starting pg pool end');
+  console.info("starting pg pool end");
   dbConnected = false;
   pool.end();
-  console.info('exiting');
+  console.info("exiting");
   process.exit();
 }
 
-server.listen(port, function () {
+server.listen(port, function() {
   var port = server.address().port;
-  console.log('App running on port ' + port);
+  console.log("App running on port " + port);
 });
